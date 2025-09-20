@@ -1,39 +1,58 @@
 import hashlib
+import logging
+from typing import Any, Optional
 
-from langchain_community.document_loaders import PyPDFLoader
+from unstructured.partition.pdf import partition_pdf
 
 from embedchain.helpers.json_serializable import register_deserializable
 from embedchain.loaders.base_loader import BaseLoader
 from embedchain.utils.misc import clean_string
 
+logger = logging.getLogger(__name__)
+
 
 @register_deserializable
 class PdfFileLoader(BaseLoader):
+    def __init__(self, config: Optional[dict[str, Any]] = None):
+        super().__init__()
+        config = config or {}
+        self.mode = config.get("mode", "paged")  # Default to 'paged'
+
     def load_data(self, url):
         """Load data from a PDF file."""
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36",  # noqa:E501
-        }
-        loader = PyPDFLoader(url, headers=headers)
-        data = []
-        all_content = []
-        pages = loader.load_and_split()
-        if not len(pages):
-            raise ValueError("No data found")
-        for page in pages:
-            content = page.page_content
-            content = clean_string(content)
-            metadata = page.metadata
-            metadata["url"] = url
-            data.append(
-                {
-                    "content": content,
-                    "meta_data": metadata,
-                }
+        try:
+            elements = partition_pdf(
+                url,
+                strategy="auto",
+                infer_table_structure=True,
+                extract_images_in_pdf=True,
             )
-            all_content.append(content)
-        doc_id = hashlib.sha256((" ".join(all_content) + url).encode()).hexdigest()
-        return {
-            "doc_id": doc_id,
-            "data": data,
-        }
+            data = []
+            all_content = []
+
+            for element in elements:
+                metadata = {"url": url, "data_type": "text"}  # Default data_type
+                content = ""
+
+                if "unstructured.documents.elements.Table" in str(type(element)):
+                    metadata["data_type"] = "table"
+                    content = str(element.metadata.text_as_html)
+                elif "unstructured.documents.elements.Image" in str(type(element)):
+                    metadata["data_type"] = "image"
+                    content = str(element.text)
+                else:
+                    content = clean_string(str(element))
+
+                if content:
+                    data.append({"content": content, "meta_data": metadata})
+                    all_content.append(content)
+
+            if not data:
+                raise ValueError("No data found")
+
+            doc_id = hashlib.sha256((url + "".join(all_content)).encode()).hexdigest()
+            return {"doc_id": doc_id, "data": data}
+
+        except Exception as e:
+            logger.error(f"Error processing PDF file {url}: {e}")
+            raise

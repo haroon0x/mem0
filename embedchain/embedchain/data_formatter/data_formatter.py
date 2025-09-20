@@ -108,7 +108,7 @@ class DataFormatter(JSONSerializable):
         """Returns the appropriate chunker for the given data type (updated for lazy loading)."""
         chunker_classes = {
             DataType.YOUTUBE_VIDEO: "embedchain.chunkers.youtube_video.YoutubeVideoChunker",
-            DataType.PDF_FILE: "embedchain.chunkers.pdf_file.PdfFileChunker",
+            DataType.PDF_FILE: "embedchain.chunkers.unstructured_chunker.UnstructuredChunker",
             DataType.WEB_PAGE: "embedchain.chunkers.web_page.WebPageChunker",
             DataType.QNA_PAIR: "embedchain.chunkers.qna_pair.QnaPairChunker",
             DataType.TEXT: "embedchain.chunkers.text.TextChunker",

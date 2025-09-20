@@ -68,6 +68,10 @@ extras = [
     "elasticsearch>=8.0.0,<9.0.0",
     "opensearch-py>=2.0.0",
     "langchain-memgraph>=0.1.0",
+    "unstructured[local-inference]>=0.14.8",
+    "pillow>=10.3.0",
+    "lxml>=5.2.2",
+    "pytesseract>=0.3.10",
 ]
 test = [
     "pytest>=8.2.2",
